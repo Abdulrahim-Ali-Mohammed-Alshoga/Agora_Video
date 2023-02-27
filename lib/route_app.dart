@@ -1,7 +1,9 @@
 
 
 import 'package:agora_video/presntation/screens/home_screen.dart';
-import 'package:agora_video/presntation/screens/second_screen.dart';
+
+import 'package:agora_video/presntation/screens/sing_in_screen.dart';
+import 'package:agora_video/presntation/screens/sing_up_screen.dart';
 import 'package:agora_video/presntation/screens/video_call_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -21,11 +23,13 @@ class RouteApp {
         return MaterialPageRoute(
           builder: (context) => const VideoCallScreen(),
         );
-      case NamePage.secondScreen:
-        SecondScreenArgument screenArgument =
-            routeSettings.arguments as SecondScreenArgument;
+      case NamePage.singInScreen:
         return MaterialPageRoute(
-          builder: (context) => SecondScreen(name: screenArgument.name),
+          builder: (context) => SingInScreen(),
+        );
+      case NamePage.singUpScreen:
+        return MaterialPageRoute(
+          builder: (context) => SingUpScreen(),
         );
     }
 

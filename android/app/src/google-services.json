@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "174317412146",
+    "project_id": "agoar-flutter",
+    "storage_bucket": "agoar-flutter.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:174317412146:android:797571db0a983937e5c12b",
+        "android_client_info": {
+          "package_name": "com.example.agora_video"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "174317412146-5tbdt6r9q0k6nsr0ai2n0j1bevupvh4n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwPk_W3Hrn9U30239mehmgHjM4Q3KPPxw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "174317412146-5tbdt6r9q0k6nsr0ai2n0j1bevupvh4n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
