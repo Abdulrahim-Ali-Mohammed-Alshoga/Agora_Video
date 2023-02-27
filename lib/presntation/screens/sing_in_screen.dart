@@ -1,4 +1,5 @@
 import 'package:agora_video/constants/name_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -16,22 +17,27 @@ class _SingInScreenState extends State<SingInScreen> {
   TextEditingController controllerEmail = TextEditingController();
   AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
   bool isPassword = true;
+
   final GlobalKey<FormState> globalKey = GlobalKey<FormState>();
+
   // var box = Hive.box(authDb);
   Future<void> singInFill() async {
     if (globalKey.currentState!.validate()) {
       globalKey.currentState!.save();
       // await box.put(authTable, true);
       // await  box.put(typeAuthTable, true);
+
       try {
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final credential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(
           email: controllerEmail.text,
           password: controllerPassword.text,
-        ).then((value){
-
-          Navigator.pushNamedAndRemoveUntil(context, NamePage.homeScreen, (route) => false);
-
-        });}on FirebaseAuthException catch (e) {
+        )
+            .then((value) {
+          Navigator.pushNamedAndRemoveUntil(
+              context, NamePage.homeScreen, (route) => false);
+        });
+      } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {
           print('The password provided is too weak.');
         } else if (e.code == 'email-already-in-use') {
@@ -40,11 +46,6 @@ class _SingInScreenState extends State<SingInScreen> {
       } catch (e) {
         print(e);
       }
-
-
-
-
-
     } else {
       setState(() {
         _autoValidateMode = AutovalidateMode.always;
@@ -68,18 +69,12 @@ class _SingInScreenState extends State<SingInScreen> {
                 SizedBox(height: 50),
                 Text(
                   "Hello Again !",
-                  style: TextStyle(
-                      color:Colors.white,
-
-                      fontSize: 25),
+                  style: TextStyle(color: Colors.white, fontSize: 25),
                 ),
                 SizedBox(height: 10),
                 Text(
                   "Enter your E-mail & password to find out what's new",
-                  style: TextStyle(
-                      fontSize: 12,
-
-                      color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 SizedBox(height: 60),
                 TextFormFieldWidget(
@@ -88,7 +83,8 @@ class _SingInScreenState extends State<SingInScreen> {
                     validator: (value) {
                       if (value!.isEmpty) {
                         return 'Emile cannot be empty';
-                      } else if (!value.contains("@")||!value.contains(".com")) {
+                      } else if (!value.contains("@") ||
+                          !value.contains(".com")) {
                         return 'This is not Email';
                       }
                       return null;
@@ -125,28 +121,26 @@ class _SingInScreenState extends State<SingInScreen> {
                 Center(
                   child: RichText(
                       text: TextSpan(children: <WidgetSpan>[
-                        WidgetSpan(
-                            child: Text(
-                              "Don't have an account? ",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-
-                              ),
-                            )),
-                        WidgetSpan(
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pushNamed(context, NamePage.singUpScreen);
-                              },
-                              child: const Text("SignUp",
-                                  style: TextStyle(
-                                    color: Colors.deepOrange,
-                                    fontSize: 14,
-
-                                  )),
-                            )),
-                      ])),
+                    WidgetSpan(
+                        child: Text(
+                      "Don't have an account? ",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    )),
+                    WidgetSpan(
+                        child: InkWell(
+                      onTap: () {
+                        Navigator.pushNamed(context, NamePage.singUpScreen);
+                      },
+                      child: const Text("SignUp",
+                          style: TextStyle(
+                            color: Colors.deepOrange,
+                            fontSize: 14,
+                          )),
+                    )),
+                  ])),
                 ),
                 SizedBox(
                   height: 12,
@@ -164,10 +158,7 @@ class _SingInScreenState extends State<SingInScreen> {
                         child: const Center(
                           child: Text(
                             "Continue",
-                            style: TextStyle(
-                                fontSize: 25,
-
-                                color: Colors.white),
+                            style: TextStyle(fontSize: 25, color: Colors.white),
                           ),
                         )),
                   ),
