@@ -1,4 +1,4 @@
-class SecondScreenArgument{
-  SecondScreenArgument({required this.name});
-String name;
+class HomeScreenArgument{
+  HomeScreenArgument({required this.id});
+String id;
 }

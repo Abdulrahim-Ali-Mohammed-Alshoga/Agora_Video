@@ -1,8 +1,10 @@
+import 'package:agora_video/constants/firebase.dart';
 import 'package:agora_video/constants/name_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../constants/arguments.dart';
 import '../widgets/text_form_field_widget.dart';
 
 class SingUpScreen extends StatefulWidget {
@@ -20,6 +22,9 @@ class _SingUpScreenState extends State<SingUpScreen> {
   CollectionReference users = FirebaseFirestore.instance.collection('users');
   AutovalidateMode autoValidateMode = AutovalidateMode.disabled;
   bool isPassword = true;
+   late UserCredential credential;
+   late String id;
+
 
   // var box = Hive.box(authDb);
   Future<void> personalInfoFill() async {
@@ -30,19 +35,22 @@ class _SingUpScreenState extends State<SingUpScreen> {
 
 
       try {
-        final credential = await FirebaseAuth.instance
+          await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
           email: controllerEmail.text,
           password: controllerPassword.text,
         )
             .then((value) {
+              id=value.user!.uid;
           users
               .add({
-            'full_name': controllerName.text, // John Doe
-            'company': controllerEmail.text, // Stokes and Sons
+            UserFire.name: controllerName.text.trim(), // John Doe
+            UserFire.email: controllerEmail.text.trim(), // Stokes and Sons
+            UserFire.password: controllerPassword.text.trim(), // Stokes and Sons
+            UserFire.id: id, // Stokes and Sons
           })
               .then((value) => Navigator.pushNamedAndRemoveUntil(
-              context, NamePage.homeScreen, (route) => false))
+              context, arguments: HomeScreenArgument(id: id), NamePage.homeScreen, (route) => false))
               .catchError((error) => print("Failed to add user: $error"));
 
         });
@@ -84,7 +92,7 @@ class _SingUpScreenState extends State<SingUpScreen> {
               children: [
                 const Text(
                   "Personal Information",
-                  style: TextStyle(fontSize: 25, color: Colors.white),
+                  style: TextStyle(fontSize: 25, color: Colors.black),
                 ),
                 const SizedBox(height: 10),
                 const Text(

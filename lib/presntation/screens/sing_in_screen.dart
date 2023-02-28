@@ -1,3 +1,4 @@
+import 'package:agora_video/constants/arguments.dart';
 import 'package:agora_video/constants/name_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,7 +18,7 @@ class _SingInScreenState extends State<SingInScreen> {
   TextEditingController controllerEmail = TextEditingController();
   AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
   bool isPassword = true;
-
+late UserCredential credential;
   final GlobalKey<FormState> globalKey = GlobalKey<FormState>();
 
   // var box = Hive.box(authDb);
@@ -28,14 +29,14 @@ class _SingInScreenState extends State<SingInScreen> {
       // await  box.put(typeAuthTable, true);
 
       try {
-        final credential = await FirebaseAuth.instance
+        await FirebaseAuth.instance
             .signInWithEmailAndPassword(
-          email: controllerEmail.text,
-          password: controllerPassword.text,
+          email: controllerEmail.text.trim(),
+          password: controllerPassword.text.trim(),
         )
             .then((value) {
           Navigator.pushNamedAndRemoveUntil(
-              context, NamePage.homeScreen, (route) => false);
+              context, NamePage.homeScreen, (route) => false,arguments: HomeScreenArgument(id: value.user!.uid));
         });
       } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {
@@ -62,21 +63,21 @@ class _SingInScreenState extends State<SingInScreen> {
         key: globalKey,
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.only(left: 20, top: 50, right: 20),
+            padding: const EdgeInsets.only(left: 20, top: 50, right: 20),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 50),
-                Text(
-                  "Hello Again !",
-                  style: TextStyle(color: Colors.white, fontSize: 25),
+                const SizedBox(height: 50),
+                const Text(
+                  "Hello",
+                  style: TextStyle(color: Colors.black, fontSize: 25),
                 ),
-                SizedBox(height: 10),
-                Text(
+                const SizedBox(height: 10),
+                const Text(
                   "Enter your E-mail & password to find out what's new",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                SizedBox(height: 60),
+                const SizedBox(height: 60),
                 TextFormFieldWidget(
                     controller: controllerEmail,
                     hintText: "Emile",
@@ -91,7 +92,7 @@ class _SingInScreenState extends State<SingInScreen> {
                     },
                     textInputAction: TextInputAction.next,
                     textInputType: TextInputType.emailAddress),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 TextFormFieldWidget(
                     controller: controllerPassword,
                     hintText: "Password",
@@ -115,13 +116,13 @@ class _SingInScreenState extends State<SingInScreen> {
                     },
                     textInputAction: TextInputAction.done,
                     textInputType: TextInputType.name),
-                SizedBox(
+                const SizedBox(
                   height: 50,
                 ),
                 Center(
                   child: RichText(
                       text: TextSpan(children: <WidgetSpan>[
-                    WidgetSpan(
+                    const WidgetSpan(
                         child: Text(
                       "Don't have an account? ",
                       style: TextStyle(
@@ -142,7 +143,7 @@ class _SingInScreenState extends State<SingInScreen> {
                     )),
                   ])),
                 ),
-                SizedBox(
+                const SizedBox(
                   height: 12,
                 ),
                 SizedBox(

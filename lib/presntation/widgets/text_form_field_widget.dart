@@ -26,9 +26,9 @@ class TextFormFieldWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       keyboardType: textInputType,
-      cursorColor: Colors.white,
+      cursorColor: Colors.deepOrange,
       style:
-      const TextStyle(color: Colors.white),
+      const TextStyle(color: Colors.black),
       controller: controller,
       textInputAction: textInputAction,
       validator: validator,
@@ -39,7 +39,7 @@ class TextFormFieldWidget extends StatelessWidget {
           borderSide: BorderSide(color: Colors.grey, width: 1),
         ),
         focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.white),
+          borderSide: BorderSide(color: Colors.black),
         ),
         focusedErrorBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: Colors.redAccent),

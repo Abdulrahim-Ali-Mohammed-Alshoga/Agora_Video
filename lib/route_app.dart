@@ -1,5 +1,3 @@
-
-
 import 'package:agora_video/presntation/screens/home_screen.dart';
 
 import 'package:agora_video/presntation/screens/sing_in_screen.dart';
@@ -10,13 +8,16 @@ import 'package:flutter/material.dart';
 import 'constants/arguments.dart';
 import 'constants/name_page.dart';
 
-
 class RouteApp {
   Route? generateRoute(RouteSettings routeSettings) {
     switch (routeSettings.name) {
       case NamePage.homeScreen:
+        HomeScreenArgument homeScreenArgument =
+            routeSettings.arguments as HomeScreenArgument;
         return MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
+          builder: (context) => HomeScreen(
+            uid: homeScreenArgument.id,
+          ),
         );
 
       case NamePage.videoCallScreen:

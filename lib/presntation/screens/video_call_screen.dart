@@ -1,5 +1,7 @@
 import 'package:agora_rtc_engine/rtc_engine.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../constants/agora_manager.dart';
@@ -20,7 +22,38 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   int remoteUid = 0;
   bool changLocalRender = false;
   bool isMic = false;
+  bool playEffect = true;
   late RtcEngine rtcEngine;
+
+  Future<void> switchEffect() async {
+    if (playEffect) {
+      rtcEngine?.stopEffect(1)?.then((value) {
+        setState(() {
+          playEffect = false;
+        });
+      })?.catchError((err) {
+        debugPrint("stopEffect $err");
+      });
+    } else {
+      rtcEngine
+          ?.playEffect(
+        1,
+        "assets/sounds/phone.mp3",
+        -1,
+        1,
+        1,
+        100,
+        true,
+      )
+          ?.then((value) {
+        setState(() {
+          playEffect = true;
+        });
+      })?.catchError((err) {
+        debugPrint("playEffect $err");
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -34,6 +67,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void dispose() {
     // TODO: implement dispose
     rtcEngine.destroy();
+    assetsAudioPlayer.stop();
     super.dispose();
   }
 
@@ -60,14 +94,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                           ),
                         ),
                       ),
-
                     ],
                   )
                 : Stack(
                     children: [
-                      changLocalRender
-                          ? const LocalRemoteVideoWidget()
-                          : RenderRemoteVideoWidget(remoteUid: remoteUid),
+                      Center(
+                          child: changLocalRender
+                              ? const LocalRemoteVideoWidget()
+                              : RenderRemoteVideoWidget(remoteUid: remoteUid)),
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -158,7 +192,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       ),
     );
   }
-
+  AudioPlayer assetsAudioPlayer = AudioPlayer();
   Future<void> initAgora() async {
     rtcEngine =
         await RtcEngine.createWithContext(RtcEngineContext(AgoraManager.appId));
@@ -166,15 +200,17 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     rtcEngine.setEventHandler(
       RtcEngineEventHandler(
         joinChannelSuccess: (String channel, int uid, int elapsed) {
-        //  print('local user $uid joined successfully');
+          //  print('local user $uid joined successfully');
+          playContactingRing(isCaller: true);
         },
         userJoined: (int uid, int elapsed) {
 // player.stop();
           //print('remote user $uid joined successfully');
+          assetsAudioPlayer.stop();
           setState(() => remoteUid = uid);
         },
         userOffline: (int uid, UserOfflineReason reason) {
-         // print('remote user $uid left call');
+          // print('remote user $uid left call');
           setState(() => remoteUid = 0);
           Navigator.of(context).pop();
         },
@@ -182,10 +218,24 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     );
 
     // await rtcEngine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    await rtcEngine.enableVideo();
-    await rtcEngine.startPreview();
+    // await rtcEngine.enableVideo();
+    // await rtcEngine.startPreview();
     await rtcEngine.joinChannel(
         AgoraManager.token, AgoraManager.channelName, null, 0);
+  }
+  Future<void> playContactingRing({required bool isCaller}) async {
+
+    // ByteData bytes = await rootBundle.load(audioAsset);
+    // Uint8List  soundBytes = bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
+    await  assetsAudioPlayer.play(AssetSource('sounds/phone_calling_Sound_Effect.mp3'));
+    // if(result == 1){ //play success
+    //   debugPrint("Sound playing successful.");
+    // }else{
+    //   debugPrint("Error while playing sound.");
+    // }
+    // if(isCaller){
+    //   startCountdownCallTimer();
+    // }
   }
 // Widget remoteVideo() {
 //   if (remoteUid != 0) {
