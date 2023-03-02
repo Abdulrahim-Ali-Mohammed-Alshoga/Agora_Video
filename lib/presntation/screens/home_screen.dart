@@ -3,10 +3,15 @@ import 'dart:async';
 import 'package:agora_video/constants/arguments.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 import '../../constants/firebase.dart';
 import '../../constants/name_page.dart';
+import '../../data/models/call.dart';
 import '../../data/models/user.dart';
+import '../../data/repository/token_repository.dart';
+import '../../data/web_services/token_web_services.dart';
 
 class HomeScreen extends StatefulWidget {
   HomeScreen({Key? key, required this.uid}) : super(key: key);
@@ -19,20 +24,32 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _controller = ScrollController();
 var  callSubscription;
+  var uuid = Uuid();
+late Call callInfo;
+  TokenRepository tokenRepository=TokenRepository(TokenWebServices());
 call(){
+
   final stream = FirebaseFirestore.instance
       .collection(CallFire.callsCollections)
       .where(CallFire.receiverId, isEqualTo: widget.uid)
+      .where(CallFire.stateCall, isEqualTo: 'calling')
       .snapshots();
   stream.listen((value) {
+
     if(value.docs.isNotEmpty)
 
     {
+      print(31555555);
+      callInfo=Call.fromJson(value.docs[0]);
         Navigator.pushNamed(
           context,
           NamePage.callScreen,
+          arguments:CallScreenArgument(callerInfo: callInfo)
         );
       }
+    else{print(widget.uid);
+      print("object");
+    }
     });
 
 }
@@ -51,12 +68,18 @@ call(){
         }
       }
       if (checkPermission) {
+        var channelName1=uuid.v4();
+        tokenRepository.getToken(channelName1).then((value) => {
         Navigator.pushNamed(context, NamePage.videoCallScreen,
-            arguments: VideoCallScreenArgument(
-                callerId: callerId,
-                receiverId: receiverId,
-                receiverName: receiverName,
-                callerName: callerName));
+        arguments: VideoCallScreenArgument(
+        callerId: callerId,
+        token: value.tokenUnique!,
+        channelName: channelName1,
+        receiverId: receiverId,
+        receiverName: receiverName,
+        callerName: callerName))
+        });
+
       }
     });
   }
@@ -64,6 +87,7 @@ call(){
   void initState() {
     // TODO: implement initState
     super.initState();
+
     call();
   }
   CollectionReference messages =
@@ -83,10 +107,10 @@ call(){
           }
           for (var value in userList1) {
             if (value.id == widget.uid) {
-              print(133333333333332);
+
               user = value;
             } else {
-              print(55555555555555);
+
               userList.add(value);
             }
           }

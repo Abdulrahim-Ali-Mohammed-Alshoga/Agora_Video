@@ -1,2 +1,3 @@
-abstract class CallState {}
-class CallSuccess extends CallState{}
+abstract class TokenState {}
+class TokenSuccess extends TokenState{}
+class TokenInitialState extends TokenState{}

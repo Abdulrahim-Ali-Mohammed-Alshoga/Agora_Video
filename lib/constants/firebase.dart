@@ -12,8 +12,11 @@ class CallFire{
   static const callsCollections="calls";
   static const callerName="callerName";
   static const callerId="callerId";
+  static const id="id";
   static const receiverId="receiverId";
+  static const token="token";
+  static const channelName="channelName";
   static const receiverName="receiverName";
-  static const isCalling="isCalling";
-  static const isCurrent="isCurrent";
+  static const stateCall="stateCall";
+
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agora_rtc_engine/rtc_engine.dart';
+import 'package:agora_video/data/repository/call_repository.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -17,8 +18,9 @@ import '../widgets/local_remote_video_widget.dart';
 import '../widgets/render_remote_video_widget.dart';
 
 class VideoCallScreen extends StatefulWidget {
-   VideoCallScreen({Key? key,required this.videoCSA}) : super(key: key);
-   VideoCallScreenArgument videoCSA;
+  VideoCallScreen({Key? key, required this.videoCSA}) : super(key: key);
+  VideoCallScreenArgument videoCSA;
+
   @override
   State<VideoCallScreen> createState() => _VideoCallScreenState();
 }
@@ -30,7 +32,20 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool playEffect = true;
   String callingOrRinging = "Calling...";
   late RtcEngine rtcEngine;
-  CollectionReference calls = FirebaseFirestore.instance.collection('calls');
+  final calls = FirebaseFirestore.instance.collection('calls').doc();
+
+  callStream() {
+    final stream = FirebaseFirestore.instance
+        .collection(CallFire.callsCollections)
+        .where(CallFire.stateCall, isEqualTo: 'citReceiver')
+        .where(CallFire.id, isEqualTo: calls.id)
+        .snapshots();
+    stream.listen((value) {
+      if (value.docs.isNotEmpty) {
+        Navigator.pop(context);
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -38,6 +53,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     RtcRemoteView.SurfaceView;
     super.initState();
     initAgora();
+    callStream();
   }
 
   @override
@@ -45,6 +61,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     // TODO: implement dispose
     rtcEngine.destroy();
     assetsAudioPlayer.dispose();
+    CallRepository.updateCall(stateCall: "endCalling", id: calls.id);
     super.dispose();
   }
 
@@ -63,16 +80,20 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                           alignment: Alignment.topCenter,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 50),
-                            child: RichText(textAlign: TextAlign.center,
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(text:widget.videoCSA.receiverName,style: const TextStyle(
-                                      fontSize: 25, color: Colors.black,fontWeight: FontWeight.bold) ),
-                                  TextSpan(text:'\n$callingOrRinging',style: const TextStyle(
-                                  fontSize: 20, color: Colors.black) ),
-                                ]
-                              ),
-
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(children: [
+                                TextSpan(
+                                    text: widget.videoCSA.receiverName,
+                                    style: const TextStyle(
+                                        fontSize: 25,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold)),
+                                TextSpan(
+                                    text: '\n$callingOrRinging',
+                                    style: const TextStyle(
+                                        fontSize: 20, color: Colors.black)),
+                              ]),
                             ),
                           ),
                         ),
@@ -83,13 +104,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     children: [
                       changLocalRender
                           ? const LocalRemoteVideoWidget()
-                          : RenderRemoteVideoWidget(remoteUid: remoteUid),
+                          : RenderRemoteVideoWidget(channelName: widget.videoCSA.channelName,remoteUid: remoteUid),
                       SafeArea(
                         child: Align(
                           alignment: Alignment.topRight,
                           child: Text(timerText,
                               style: const TextStyle(
-                                  fontSize: 22, color: Colors.redAccent,fontWeight: FontWeight.bold)),
+                                  fontSize: 22,
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ),
                       GestureDetector(
@@ -109,7 +132,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: changLocalRender
-                                  ? RenderRemoteVideoWidget(
+                                  ? RenderRemoteVideoWidget(channelName: widget.videoCSA.channelName,
                                       remoteUid: remoteUid)
                                   : const LocalRemoteVideoWidget(),
                             ),
@@ -145,6 +168,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   RawMaterialButton(
                       elevation: 2,
                       onPressed: () {
+                        CallRepository.updateCall(id: calls.id, stateCall: "citCaller");
                         rtcEngine.leaveChannel();
                         Navigator.of(context).pop(true);
                       },
@@ -179,47 +203,47 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   AudioPlayer assetsAudioPlayer = AudioPlayer();
-addCallFire() {
-  calls
-      .add({
-    CallFire.callerName: widget.videoCSA.callerName, // John Doe
-    CallFire.receiverName: widget.videoCSA.receiverName, // John Doe
-    CallFire.callerId: widget.videoCSA.callerId, // John Doe
-    CallFire.receiverId: widget.videoCSA.receiverId, // John Doe
-    CallFire.isCalling:true, // Stokes and Sons
-    CallFire.isCurrent: true, // Stokes and Sons
 
-  });
-}
+  addCallFire() {
+    calls.set({
+      CallFire.callerName: widget.videoCSA.callerName, // John Doe
+      CallFire.id: calls.id, // John Doe
+      CallFire.receiverName: widget.videoCSA.receiverName, // John Doe
+      CallFire.callerId: widget.videoCSA.callerId, // John Doe
+      CallFire.receiverId: widget.videoCSA.receiverId, // John Doe
+      CallFire.stateCall: "calling",
+      CallFire.token:widget.videoCSA.token,
+      CallFire.channelName: widget.videoCSA.channelName,
+    });
+  }
+
   Future<void> initAgora() async {
     startTimeout();
     // await [Permission.microphone, Permission.camera].request();
-    rtcEngine =
-        await RtcEngine.create(AgoraManager.appId);
+    rtcEngine = await RtcEngine.create(AgoraManager.appId);
 
-    rtcEngine.enableVideo().onError((error, stackTrace) => Navigator.pop(context));
+    rtcEngine
+        .enableVideo();
+
     rtcEngine.setEventHandler(
-      
       RtcEngineEventHandler(
-
         joinChannelSuccess: (String channel, int uid, int elapsed) {
-addCallFire();
+          addCallFire();
           //  print('local user $uid joined successfully');
           playContactingRing();
           callingOrRinging = 'Ringing';
-          setState(() {timerMaxSeconds=70;});
+          setState(() {
+            timerMaxSeconds = 70;
+          });
         },
         userJoined: (int uid, int elapsed) async {
 // player.stop();
           //print('remote user $uid joined successfully');
-           assetsAudioPlayer.stop();
-           timerMaxSeconds=1800;
+          assetsAudioPlayer.stop();
+          timerMaxSeconds = 1800;
           setState(() => remoteUid = uid);
         },
-        audioEffectFinished: (int i) {
-          setState(() {});
-          assetsAudioPlayer.stop();
-        },
+
         userOffline: (int uid, UserOfflineReason reason) async {
           // print('remote user $uid left call');
           await assetsAudioPlayer.stop();
@@ -237,10 +261,10 @@ addCallFire();
     // rtcEngine.setParameters("{\"rtc.log_filter\": 65535}");
     await rtcEngine.startPreview();
     await rtcEngine.joinChannel(
-        AgoraManager.token, AgoraManager.channelName, null, 0).onError((error, stackTrace) => Navigator.pop(context));
+        widget.videoCSA.token, widget.videoCSA.channelName, null, 0);
   }
 
-   int timerMaxSeconds =15;
+  int timerMaxSeconds = 40;
   int currentSeconds = 0;
 
   String get timerText =>
