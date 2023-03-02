@@ -7,3 +7,13 @@ class UserFire{
   static const email="email";
 
 }
+class CallFire{
+  CallFire._();
+  static const callsCollections="calls";
+  static const callerName="callerName";
+  static const callerId="callerId";
+  static const receiverId="receiverId";
+  static const receiverName="receiverName";
+  static const isCalling="isCalling";
+  static const isCurrent="isCurrent";
+}

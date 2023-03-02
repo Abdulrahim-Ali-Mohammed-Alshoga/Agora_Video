@@ -1,3 +1,4 @@
+import 'package:agora_video/presntation/screens/call_screen.dart';
 import 'package:agora_video/presntation/screens/home_screen.dart';
 
 import 'package:agora_video/presntation/screens/sing_in_screen.dart';
@@ -21,12 +22,20 @@ class RouteApp {
         );
 
       case NamePage.videoCallScreen:
+        VideoCallScreenArgument videoCallScreenArgument =
+            routeSettings.arguments as VideoCallScreenArgument;
         return MaterialPageRoute(
-          builder: (context) => const VideoCallScreen(),
+          builder: (context) =>
+              VideoCallScreen(videoCSA: videoCallScreenArgument),
         );
       case NamePage.singInScreen:
         return MaterialPageRoute(
           builder: (context) => SingInScreen(),
+        );
+
+      case NamePage.callScreen:
+        return MaterialPageRoute(
+          builder: (context) => CallScreen(),
         );
       case NamePage.singUpScreen:
         return MaterialPageRoute(
