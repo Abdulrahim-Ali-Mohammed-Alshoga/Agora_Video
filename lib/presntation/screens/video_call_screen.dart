@@ -1,24 +1,17 @@
 import 'dart:async';
-
 import 'package:agora_rtc_engine/rtc_engine.dart';
-import 'package:agora_video/data/repository/call_repository.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:agora_video/view_model/video_call_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
-
 import '../../constants/agora_manager.dart';
-import 'package:agora_rtc_engine/rtc_local_view.dart' as RtcLocalView;
-import 'package:agora_rtc_engine/rtc_remote_view.dart' as RtcRemoteView;
-
 import '../../constants/arguments.dart';
-import '../../constants/firebase.dart';
 import '../widgets/local_remote_video_widget.dart';
 import '../widgets/render_remote_video_widget.dart';
 
 class VideoCallScreen extends StatefulWidget {
   VideoCallScreen({Key? key, required this.videoCSA}) : super(key: key);
+
+  // يتم في هذا المتغير احتواء معلومات خاص بالتصال وقاعدة البيانات قادمة من الصفحة الرئيسية مثل رقم id لكل من المتصل والمستقبل اسماهم والتوكن واسم القناة
   VideoCallScreenArgument videoCSA;
 
   @override
@@ -26,42 +19,35 @@ class VideoCallScreen extends StatefulWidget {
 }
 
 class _VideoCallScreenState extends State<VideoCallScreen> {
-  int remoteUid = 0;
-  bool changLocalRender = false;
-  bool isMic = false;
-  bool playEffect = true;
-  String callingOrRinging = "Calling...";
-  late RtcEngine rtcEngine;
-  final calls = FirebaseFirestore.instance.collection('calls').doc();
+  VideoCallViewModel videoCallViewModel = VideoCallViewModel();
+
+//يتم في هذه الدالة الاستماع للمستقبل اذا رفض المكالة قبل ان يرتبط
 
   callStream() {
-    final stream = FirebaseFirestore.instance
-        .collection(CallFire.callsCollections)
-        .where(CallFire.stateCall, isEqualTo: 'citReceiver')
-        .where(CallFire.id, isEqualTo: calls.id)
-        .snapshots();
-    stream.listen((value) {
+    videoCallViewModel.gatCallStream().listen((value) {
       if (value.docs.isNotEmpty) {
         Navigator.pop(context);
       }
     });
   }
 
+//تشغيل الاتصال  وبداء الاستماع لقاعدة البيانات
   @override
   void initState() {
     // TODO: implement initState
-    RtcRemoteView.SurfaceView;
     super.initState();
     initAgora();
     callStream();
   }
 
+//يتم قطع قناة الاتصال وايضا الرنة وتحديث قاعدة البيانات بان الاتصال انتهاء من خلات تغير stateCall المتعلقة به  بهذا الاتصال الى endCalling
+  //قطع الاتصال اي من الطرفين المتصل و المستقبل والرجوع الى الصفحة السابقة
   @override
   void dispose() {
     // TODO: implement dispose
-    rtcEngine.destroy();
-    assetsAudioPlayer.dispose();
-    CallRepository.updateCall(stateCall: "endCalling", id: calls.id);
+    videoCallViewModel.rtcEngine.destroy();
+    videoCallViewModel.assetsAudioPlayer.dispose();
+    videoCallViewModel.updateCall(stateCall: "endCalling");
     super.dispose();
   }
 
@@ -71,9 +57,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       body: Stack(
         children: [
           Center(
-            child: remoteUid == 0
+            //المتغير remoteUid قمنا بعملة لكي اذا قبل المستقبل الاتصال تتغير الوجة الى واجهة الاتصال اذا كان المتغير لا يسوي 0 واذا سوت 0 تكون وجهة حق الرنة
+            child: videoCallViewModel.remoteUid == 0
                 ? Stack(
                     children: [
+                      //هنا يتم عرض الكاميرة الامامية للمستخدم
                       const LocalRemoteVideoWidget(),
                       SafeArea(
                         child: Align(
@@ -84,13 +72,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                               textAlign: TextAlign.center,
                               text: TextSpan(children: [
                                 TextSpan(
+                                    // اسم المستقبل
                                     text: widget.videoCSA.receiverName,
                                     style: const TextStyle(
                                         fontSize: 25,
                                         color: Colors.black,
                                         fontWeight: FontWeight.bold)),
                                 TextSpan(
-                                    text: '\n$callingOrRinging',
+                                    text:
+                                        //يحتوي هذا المتغير على calling فاذا تم الاتصال اي قبل ان يرتبط مع المستقبل يتغير النص الى تحويل Ringing
+                                        '\n${videoCallViewModel.callingOrRinging}',
                                     style: const TextStyle(
                                         fontSize: 20, color: Colors.black)),
                               ]),
@@ -102,13 +93,19 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   )
                 : Stack(
                     children: [
-                      changLocalRender
+                      //هذا المتغير من اجل التغيير بين الشاشتيين الكبيرة والصغيرة
+                      videoCallViewModel.changLocalRender
+                          //هنا يتم عرض الكاميرة  للمتصل في الشاشة الكبيرة اذا المتغير changLocalRender يساوي true
                           ? const LocalRemoteVideoWidget()
-                          : RenderRemoteVideoWidget(channelName: widget.videoCSA.channelName,remoteUid: remoteUid),
+                          //  هنا يتم عرض الكاميرة للمستقبل في الشاشة الكبيرة  اذا المتغير changLocalRender يساوي false
+                          : RenderRemoteVideoWidget(
+                              channelName: widget.videoCSA.channelName,
+                              remoteUid: videoCallViewModel.remoteUid),
                       SafeArea(
                         child: Align(
                           alignment: Alignment.topRight,
-                          child: Text(timerText,
+                          //هنا يتم عرض الوقت المتبقي للاتصال
+                          child: Text(videoCallViewModel.timerText,
                               style: const TextStyle(
                                   fontSize: 22,
                                   color: Colors.redAccent,
@@ -118,7 +115,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            changLocalRender = !changLocalRender;
+                            //هنا يتم امر التبديل بين الشاشتين الكبيرة و الصغيرة
+                            videoCallViewModel.changLocalRender =
+                                !videoCallViewModel.changLocalRender;
                           });
                         },
                         child: SafeArea(
@@ -131,9 +130,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              child: changLocalRender
-                                  ? RenderRemoteVideoWidget(channelName: widget.videoCSA.channelName,
-                                      remoteUid: remoteUid)
+                              child: videoCallViewModel.changLocalRender
+                                  //هنا يتم عرض الكاميرة للمتصل في الشاشة الصغيرة  اذا المتغير changLocalRender يساوي false
+                                  ? RenderRemoteVideoWidget(
+                                      channelName: widget.videoCSA.channelName,
+                                      remoteUid: videoCallViewModel.remoteUid)
+                                  //هنا يتم عرض الكاميرة للمستقبل في الشاشة الصغيرة اذا المتغير changLocalRender يساوي true
                                   : const LocalRemoteVideoWidget(),
                             ),
                           ),
@@ -151,25 +153,35 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 children: [
                   RawMaterialButton(
                       padding: const EdgeInsets.all(12),
-                      fillColor: isMic ? Colors.blueAccent : Colors.white,
+                      fillColor: videoCallViewModel.isMic
+                          ? Colors.blueAccent
+                          : Colors.white,
                       shape: const CircleBorder(),
                       elevation: 2,
                       onPressed: () {
                         setState(() {
-                          isMic = !isMic;
+                          //هنا يتم امر التبديل بين كتم الصوت وفتحة
+                          videoCallViewModel.isMic = !videoCallViewModel.isMic;
                         });
-                        rtcEngine.muteAllRemoteAudioStreams(isMic);
+                        videoCallViewModel.rtcEngine.muteAllRemoteAudioStreams(
+                            videoCallViewModel.isMic);
                       },
                       child: Icon(
-                        isMic ? Icons.mic_off : Icons.mic,
-                        color: isMic ? Colors.white : Colors.blueAccent,
+                        //هنا يتم تبديل بين الايقونة بين ايقونة كتم وفتح الصوت
+                        videoCallViewModel.isMic ? Icons.mic_off : Icons.mic,
+                        //هنا يتم تبديل الالوان الايقونة
+                        color: videoCallViewModel.isMic
+                            ? Colors.white
+                            : Colors.blueAccent,
                         size: 30,
                       )),
                   RawMaterialButton(
                       elevation: 2,
                       onPressed: () {
-                        CallRepository.updateCall(id: calls.id, stateCall: "citCaller");
-                        rtcEngine.leaveChannel();
+                        //يتم قطع قناة الاتصال وايضا الرنة وتحديث قاعدة البيانات بان الاتصال انتهاء من قبل المتصل وقطع الاتصال اذا كان المستقبل في حالة الرنة بحيث يتم تغيير stateCall المتعلقة بهذا الاتصال الى citCaller
+                        videoCallViewModel.updateCall(stateCall: "citCaller");
+                        videoCallViewModel.rtcEngine.leaveChannel();
+                        //قطع الاتصال اي من الطرفين المتصل و المستقبل والرجوع الى الصفحة السابقة
                         Navigator.of(context).pop(true);
                       },
                       padding: const EdgeInsets.all(15),
@@ -186,7 +198,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       shape: const CircleBorder(),
                       padding: const EdgeInsets.all(12),
                       onPressed: () {
-                        rtcEngine.switchCamera();
+                        //هنا يتم امر التبديل بين الكاميرا الامامية والخلفية
+                        videoCallViewModel.rtcEngine.switchCamera();
                       },
                       child: const Icon(
                         Icons.switch_camera,
@@ -202,120 +215,87 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     );
   }
 
-  AudioPlayer assetsAudioPlayer = AudioPlayer();
-
+//يتم في هذه الدالة انشاء مكالة والمعلومات المتعلقة بها في قاعدة البيانات
   addCallFire() {
-    calls.set({
-      CallFire.callerName: widget.videoCSA.callerName, // John Doe
-      CallFire.id: calls.id, // John Doe
-      CallFire.receiverName: widget.videoCSA.receiverName, // John Doe
-      CallFire.callerId: widget.videoCSA.callerId, // John Doe
-      CallFire.receiverId: widget.videoCSA.receiverId, // John Doe
-      CallFire.stateCall: "calling",
-      CallFire.token:widget.videoCSA.token,
-      CallFire.channelName: widget.videoCSA.channelName,
-    });
+    videoCallViewModel.setCall(
+        channelName: widget.videoCSA.channelName,
+        token: widget.videoCSA.token,
+        callerName: widget.videoCSA.callerName,
+        receiverName: widget.videoCSA.receiverName,
+        callerId: widget.videoCSA.callerId,
+        receiverId: widget.videoCSA.receiverId);
   }
 
+// هذه الدالة تتعامل مع جميع عمليات الاتصال
   Future<void> initAgora() async {
     startTimeout();
     // await [Permission.microphone, Permission.camera].request();
-    rtcEngine = await RtcEngine.create(AgoraManager.appId);
-
-    rtcEngine
-        .enableVideo();
-
-    rtcEngine.setEventHandler(
+    videoCallViewModel.rtcEngine = await RtcEngine.create(AgoraManager.appId);
+    //هذا الامر يسمح بتشغيل خاصية الفيديو
+    videoCallViewModel.rtcEngine.enableVideo();
+    videoCallViewModel.rtcEngine.setEventHandler(
       RtcEngineEventHandler(
+        //تعمل الدالة عند ما يتم محاولة الارتباط اي قبل ما تتم عملية الاتصال وبداء المحادثة
         joinChannelSuccess: (String channel, int uid, int elapsed) {
-          addCallFire();
-          //  print('local user $uid joined successfully');
+          // ظظنقوم بتشغيل الرنه ونعمل على تحويل النص من calling الى Ringing وايضا نحفظ الاتصال في قاعدة البيانات ووقت للاتصال مدتة 70 ثانية فاذا لم يتن الرذ يقطع الاتصال
           playContactingRing();
-          callingOrRinging = 'Ringing';
+          addCallFire();
+          videoCallViewModel.callingOrRinging = 'Ringing';
           setState(() {
-            timerMaxSeconds = 70;
+            //هنا يتم امر تغيير قيمة currentSeconds الى صفر وفي هذا المتغير يتم الزيادة فيه كل ثانية ب1 حتي يصل الى 70 فيتم قطع الاتصال
+            videoCallViewModel.currentSeconds = 0;
+            videoCallViewModel.timerMaxSeconds = 70;
           });
         },
+        //تعمل الدالة عندما يتم بداء الاتصال بين الطرفين
         userJoined: (int uid, int elapsed) async {
 // player.stop();
           //print('remote user $uid joined successfully');
-          assetsAudioPlayer.stop();
-          timerMaxSeconds = 1800;
-          setState(() => remoteUid = uid);
+//قمنا بقطع الرنة وخلينا مدة الاتصال 30 دقيقة وايضا تحويل المتغير remoteUid الى رقم غير 0 من اجل تتغير الوججه الى واجهه المحادثة بين الطرفين
+          videoCallViewModel.assetsAudioPlayer.stop();
+          //هنا يتم امر تغيير قيمة currentSeconds الى صفر وفي هذا المتغير يتم الزيادة فيه كل ثانية ب1 حتي يصل الى 70 فيتم قطع الاتصال
+          videoCallViewModel.currentSeconds = 0;
+          videoCallViewModel.timerMaxSeconds = 1800;
+          setState(() => videoCallViewModel.remoteUid = uid);
         },
-
+        //تعمل الدالة عندما يقوم المستقبل اي الطرف الاخر بقطع الاتصال
+        //يتم قطع الرنة والاتصال بين الطرفين والرجوع الى الصفحة السابقة وايضا تحويل المتغير remoteUid الى 0
+        //المتغير remoteUid قمنا بعملة لكي اذا قبل المستقبل الاتصال تتغير الوجة الى واجهة الاتصال اذا كان المتغير لا يسوي 0 واذا سوت 0 تكون وجهة حق الرنة
         userOffline: (int uid, UserOfflineReason reason) async {
           // print('remote user $uid left call');
-          await assetsAudioPlayer.stop();
-          setState(() => remoteUid = 0);
-
+          setState(() => videoCallViewModel.remoteUid = 0);
+          await videoCallViewModel.assetsAudioPlayer.stop();
           Navigator.of(context).pop();
         },
       ),
     );
-
-    //await rtcEngine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    // await rtcEngine.enableVideo();
-    //rtcEngine.enableWebSdkInteroperability(true);
-    // rtcEngine.setParameters('{\"che.video.lowBitRateStreamParameter\":{\"width\":320,\"height\":180,\"frameRate\":15,\"bitRate\":140}}');
-    // rtcEngine.setParameters("{\"rtc.log_filter\": 65535}");
-    await rtcEngine.startPreview();
-    await rtcEngine.joinChannel(
+    //تشغيل الكاميرا اول ما ندخل الصفحة يعني قبل حتى ما تشتغل دالة joinChannelSuccess
+    await videoCallViewModel.rtcEngine.startPreview();
+    //آخر شيء في وظيفة rtcEngine ، نحتاج إلى ضم المتصل إلى القناة. أولاً ، يجب  توفير الرمز المميز التوكن للاتصال ، من خلال إنشاء خادم لتوليد الرمز وانشاء اسم للقناة ويمكنك للمستقبل استعمال قاعدة البيانات للوصول للتوكن و اسم قناة. فعندما نحصل على الرمز المميز و اسم القناة، يمكننا ببساطة الانضمام إلى القناة في مكان آخر ويمكنك أيضًا إنشاء رمز مميز مؤقت لاسم قناة معين على لوحة معلومات agora للاختبار.
+    await videoCallViewModel.rtcEngine.joinChannel(
         widget.videoCSA.token, widget.videoCSA.channelName, null, 0);
   }
 
-  int timerMaxSeconds = 40;
-  int currentSeconds = 0;
-
-  String get timerText =>
-      '${((timerMaxSeconds - currentSeconds) ~/ 60).toString().padLeft(2, '0')}: ${((timerMaxSeconds - currentSeconds) % 60).toString().padLeft(2, '0')}';
-
+// يتم في هذه الدالة حساب الوقت التنازلي الذي يعطى للمتغير timerMaxSeconds واذا انتهاء يتم قطع القناة والرجوع للصفحة السابقة
   startTimeout() {
     var duration = const Duration(seconds: 1);
     Timer.periodic(duration, (timer) {
       setState(() {
-        currentSeconds = timer.tick;
-        if (timer.tick >= timerMaxSeconds) {
+        videoCallViewModel.currentSeconds = timer.tick;
+        if (timer.tick >= videoCallViewModel.timerMaxSeconds) {
           timer.cancel();
-          rtcEngine.leaveChannel();
+          videoCallViewModel.rtcEngine.leaveChannel();
+          // قطع الاتصال اي من الطرفين المتصل و المستقبل والرجوع الى الصفحة السابقة عند نفاذ الوقت
           Navigator.of(context).pop(true);
         }
       });
     });
   }
 
+//تعمل الدالة على تحديد مكان الملف الصوتي وتشغيلة وعند الانتهاء يتم تشغيلة مرة اخرى
   Future<void> playContactingRing() async {
-    await assetsAudioPlayer
-        .play(AssetSource('sounds/phone_calling_Sound_Effect.mp3'));
-    assetsAudioPlayer.setReleaseMode(ReleaseMode.loop);
-    // ByteData bytes = await rootBundle.load(audioAsset);
-    // Uint8List  soundBytes = bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
-    // if(result == 1){ //play success
-    //   debugPrint("Sound playing successful.");
-    // }else{
-    //   debugPrint("Error while playing sound.");
-    // }
-    // if(isCaller){
-    //   startCountdownCallTimer();
-    // }
+    videoCallViewModel.contactingRing(
+        audioPlayer: videoCallViewModel.assetsAudioPlayer,
+        assetsAudio: 'sounds/phone_calling_Sound_Effect.mp3');
   }
-// Widget remoteVideo() {
-//   if (remoteUid != 0) {
-//     return AgoraVideoView(
-//       controller: VideoViewController.remote(
-//         rtcEngine: rtcEngine,
-//         canvas: VideoCanvas(uid: remoteUid),
-//         connection: const RtcConnection(channelId: AgoraManager.channelName),
-//       ),
-//     );
-//   } else {
-//     return const Center(
-//       child:  Text(
-//         'Please wait for remote user to join',
-//         style: TextStyle(color: Colors.black),
-//         textAlign: TextAlign.center,
-//       ),
-//     );
-//   }
-// }
 }

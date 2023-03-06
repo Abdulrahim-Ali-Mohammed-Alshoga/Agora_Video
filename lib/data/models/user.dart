@@ -11,4 +11,12 @@ class Users {
    factory Users.fromJson(jsonData) {
    return Users(name: jsonData[UserFire.name],email: jsonData[UserFire.email], id: jsonData['id'],password:jsonData[UserFire.password] );
   }
+   Map<String, dynamic> toMap() {
+     return {
+       UserFire.name: name,
+       UserFire.id: id,
+       UserFire.password: password,
+       UserFire.email: email,
+     };
+   }
 }
