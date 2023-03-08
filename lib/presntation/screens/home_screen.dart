@@ -1,17 +1,10 @@
 import 'dart:async';
-
 import 'package:agora_video/constants/arguments.dart';
+import 'package:agora_video/view_model/home_view_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:uuid/uuid.dart';
-import '../../constants/firebase.dart';
 import '../../constants/name_page.dart';
 import '../../data/models/call.dart';
-import '../../data/models/user.dart';
-import '../../data/repository/token_repository.dart';
-import '../../data/web_services/token_web_services.dart';
 
 class HomeScreen extends StatefulWidget {
   HomeScreen({Key? key, required this.uid}) : super(key: key);
@@ -22,107 +15,66 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _controller = ScrollController();
-var  callSubscription;
-  var uuid = Uuid();
-late Call callInfo;
-  TokenRepository tokenRepository=TokenRepository(TokenWebServices());
-call(){
-
-  final stream = FirebaseFirestore.instance
-      .collection(CallFire.callsCollections)
-      .where(CallFire.receiverId, isEqualTo: widget.uid)
-      .where(CallFire.stateCall, isEqualTo: 'calling')
-      .snapshots();
-  stream.listen((value) {
-
-    if(value.docs.isNotEmpty)
-
-    {
-      print(31555555);
-      callInfo=Call.fromJson(value.docs[0]);
-        Navigator.pushNamed(
-          context,
-          NamePage.callScreen,
-          arguments:CallScreenArgument(callerInfo: callInfo)
-        );
+  HomeViewModel homeViewModel = HomeViewModel();
+//يتم في هذه الدالة الاستماع لقاعدة البيانات اذا وقع اتصال للمستقبل يتم فتح صفحة CallScreen
+  call() {
+    homeViewModel.gatCallStream(widget.uid).listen((value) {
+      if (value.docs.isNotEmpty) {
+        homeViewModel.callInfo = Call.fromJson(value.docs[0]);
+        Navigator.pushNamed(context, NamePage.callScreen,
+            arguments: CallScreenArgument(callerInfo: homeViewModel.callInfo));
       }
-    else{print(widget.uid);
-      print("object");
-    }
     });
-
-}
+  }
+//يتم في هذه الدالة الانتقال الى صفحة video call
   Future<void> getPermission({
     required String receiverName,
     required String callerId,
     required String callerName,
     required String receiverId,
   }) async {
-    bool checkPermission = true;
-    await [Permission.microphone, Permission.camera].request().then((value) {
-      for (var value1 in value.values.toList()) {
-        if (value1.toString() == 'PermissionStatus.denied') {
-          checkPermission = false;
-          break;
-        }
-      }
-      if (checkPermission) {
-        var channelName1=uuid.v4();
-        tokenRepository.getToken(channelName1).then((value) => {
-        Navigator.pushNamed(context, NamePage.videoCallScreen,
-        arguments: VideoCallScreenArgument(
-        callerId: callerId,
-        token: value.tokenUnique!,
-        channelName: channelName1,
-        receiverId: receiverId,
-        receiverName: receiverName,
-        callerName: callerName))
-        });
+    homeViewModel.getPermission(
+        goScreenVideo: () {
+          var channelName1 =homeViewModel.uuid.v4();
+          homeViewModel.tokenRepository.getToken(channelName1).then((value) => {
+          Navigator.pushNamed(context, NamePage.videoCallScreen,
+          arguments: VideoCallScreenArgument(
+          callerId: callerId,
+          token: value.tokenUnique!,
+          channelName: channelName1,
+          receiverId: receiverId,
+          receiverName: receiverName,
+          callerName: callerName))
+          });
 
-      }
-    });
+        });
   }
-@override
+
+  @override
   void initState() {
     // TODO: implement initState
     super.initState();
 
     call();
   }
-  CollectionReference messages =
-      FirebaseFirestore.instance.collection(UserFire.userCollections);
-      // .where(UserFire.id, isNotEqualTo: widget.uid)
+
+
+  // .where(UserFire.id, isNotEqualTo: widget.uid)
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: messages.snapshots(),
+      stream: homeViewModel.selectUsers(widget.uid).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          List<Users> userList1 = [];
-          List<Users> userList = [];
-          Users? user;
-          for (int i = 0; i < snapshot.data!.docs.length; i++) {
-            userList1.add(Users.fromJson(snapshot.data!.docs[i]));
-          }
-          for (var value in userList1) {
-            if (value.id == widget.uid) {
-
-              user = value;
-            } else {
-
-              userList.add(value);
-            }
-          }
-
+          homeViewModel.getListUser(users:snapshot.data!.docs,id: widget.uid);
           return Scaffold(
             appBar: AppBar(
               automaticallyImplyLeading: false,
               backgroundColor: Colors.deepOrange,
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text('User'),
+                children:  [
+                  Text(homeViewModel.title),
                 ],
               ),
               centerTitle: true,
@@ -131,19 +83,19 @@ call(){
               children: [
                 Expanded(
                   child: ListView.builder(
-                      controller: _controller,
-                      itemCount: userList.length,
+                      controller: homeViewModel.controller,
+                      itemCount: homeViewModel.userList.length,
                       itemBuilder: (context, index) {
                         return Card(
                           child: ListTile(
-                            title: Text(userList[index].name!),
+                            title: Text(homeViewModel.userList[index].name!),
                             trailing: IconButton(
                               onPressed: () {
                                 getPermission(
-                                    receiverName: userList[index].name!,
-                                    receiverId: userList[index].id!,
-                                    callerId: user!.id!,
-                                callerName: user!.name!);
+                                    receiverName: homeViewModel.userList[index].name!,
+                                    receiverId: homeViewModel.userList[index].id!,
+                                    callerId: homeViewModel.user!.id!,
+                                    callerName: homeViewModel.user!.name!);
                               },
                               icon: const Icon(
                                 Icons.video_call,

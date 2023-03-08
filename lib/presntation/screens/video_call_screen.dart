@@ -179,7 +179,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       elevation: 2,
                       onPressed: () {
                         //يتم قطع قناة الاتصال وايضا الرنة وتحديث قاعدة البيانات بان الاتصال انتهاء من قبل المتصل وقطع الاتصال اذا كان المستقبل في حالة الرنة بحيث يتم تغيير stateCall المتعلقة بهذا الاتصال الى citCaller
-                        videoCallViewModel.updateCall(stateCall: "citCaller");
+                        videoCallViewModel.updateCall(stateCall: "cutCaller");
                         videoCallViewModel.rtcEngine.leaveChannel();
                         //قطع الاتصال اي من الطرفين المتصل و المستقبل والرجوع الى الصفحة السابقة
                         Navigator.of(context).pop(true);
@@ -225,7 +225,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         callerId: widget.videoCSA.callerId,
         receiverId: widget.videoCSA.receiverId);
   }
-
 // هذه الدالة تتعامل مع جميع عمليات الاتصال
   Future<void> initAgora() async {
     startTimeout();
@@ -236,16 +235,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     videoCallViewModel.rtcEngine.setEventHandler(
       RtcEngineEventHandler(
         //تعمل الدالة عند ما يتم محاولة الارتباط اي قبل ما تتم عملية الاتصال وبداء المحادثة
-        joinChannelSuccess: (String channel, int uid, int elapsed) {
+      joinChannelSuccess: (String channel, int uid, int elapsed) {
           // ظظنقوم بتشغيل الرنه ونعمل على تحويل النص من calling الى Ringing وايضا نحفظ الاتصال في قاعدة البيانات ووقت للاتصال مدتة 70 ثانية فاذا لم يتن الرذ يقطع الاتصال
           playContactingRing();
           addCallFire();
           videoCallViewModel.callingOrRinging = 'Ringing';
-          setState(() {
-            //هنا يتم امر تغيير قيمة currentSeconds الى صفر وفي هذا المتغير يتم الزيادة فيه كل ثانية ب1 حتي يصل الى 70 فيتم قطع الاتصال
-            videoCallViewModel.currentSeconds = 0;
-            videoCallViewModel.timerMaxSeconds = 70;
-          });
         },
         //تعمل الدالة عندما يتم بداء الاتصال بين الطرفين
         userJoined: (int uid, int elapsed) async {
@@ -269,13 +263,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         },
       ),
     );
+
+    //await rtcEngine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+    // await rtcEngine.enableVideo();
+    //rtcEngine.enableWebSdkInteroperability(true);
+    // rtcEngine.setParameters('{\"che.video.lowBitRateStreamParameter\":{\"width\":320,\"height\":180,\"frameRate\":15,\"bitRate\":140}}');
+    // rtcEngine.setParameters("{\"rtc.log_filter\": 65535}");
     //تشغيل الكاميرا اول ما ندخل الصفحة يعني قبل حتى ما تشتغل دالة joinChannelSuccess
     await videoCallViewModel.rtcEngine.startPreview();
     //آخر شيء في وظيفة rtcEngine ، نحتاج إلى ضم المتصل إلى القناة. أولاً ، يجب  توفير الرمز المميز التوكن للاتصال ، من خلال إنشاء خادم لتوليد الرمز وانشاء اسم للقناة ويمكنك للمستقبل استعمال قاعدة البيانات للوصول للتوكن و اسم قناة. فعندما نحصل على الرمز المميز و اسم القناة، يمكننا ببساطة الانضمام إلى القناة في مكان آخر ويمكنك أيضًا إنشاء رمز مميز مؤقت لاسم قناة معين على لوحة معلومات agora للاختبار.
     await videoCallViewModel.rtcEngine.joinChannel(
         widget.videoCSA.token, widget.videoCSA.channelName, null, 0);
   }
-
 // يتم في هذه الدالة حساب الوقت التنازلي الذي يعطى للمتغير timerMaxSeconds واذا انتهاء يتم قطع القناة والرجوع للصفحة السابقة
   startTimeout() {
     var duration = const Duration(seconds: 1);
@@ -297,5 +296,34 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     videoCallViewModel.contactingRing(
         audioPlayer: videoCallViewModel.assetsAudioPlayer,
         assetsAudio: 'sounds/phone_calling_Sound_Effect.mp3');
+    // ByteData bytes = await rootBundle.load(audioAsset);
+    // Uint8List  soundBytes = bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
+    // if(result == 1){ //play success
+    //   debugPrint("Sound playing successful.");
+    // }else{
+    //   debugPrint("Error while playing sound.");
+    // }
+    // if(isCaller){
+    //   startCountdownCallTimer();
+    // }
   }
+// Widget remoteVideo() {
+//   if (remoteUid != 0) {
+//     return AgoraVideoView(
+//       controller: VideoViewController.remote(
+//         rtcEngine: rtcEngine,
+//         canvas: VideoCanvas(uid: remoteUid),
+//         connection: const RtcConnection(channelId: AgoraManager.channelName),
+//       ),
+//     );
+//   } else {
+//     return const Center(
+//       child:  Text(
+//         'Please wait for remote user to join',
+//         style: TextStyle(color: Colors.black),
+//         textAlign: TextAlign.center,
+//       ),
+//     );
+//   }
+// }
 }
